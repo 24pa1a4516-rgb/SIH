@@ -1,0 +1,142 @@
+import { useState, useEffect } from 'react';
+import { SplashScreen } from '@/components/SplashScreen';
+import { LoginScreen } from '@/components/LoginScreen';
+import { StudentDashboard } from '@/components/StudentDashboard';
+import { TeacherDashboard } from '@/components/TeacherDashboard';
+import { AttendanceScreen } from '@/components/AttendanceScreen';
+import { CodingTerminal } from '@/components/CodingTerminal';
+import { ReportsScreen } from '@/components/ReportsScreen';
+import { Navigation } from '@/components/ui/navigation';
+import { toast } from '@/hooks/use-toast';
+
+type Screen = 'splash' | 'login' | 'dashboard' | 'attendance' | 'coding' | 'reports' | 'teacher-reports' | 'teacher-live' | 'planner' | 'profile';
+type UserType = 'student' | 'teacher';
+
+const Index = () => {
+  const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
+  const [activeTab, setActiveTab] = useState('home');
+  const [user, setUser] = useState<any>(null);
+  const [userType, setUserType] = useState<UserType>('student');
+
+  // Check for existing session
+  useEffect(() => {
+    const savedUser = localStorage.getItem('currentUser');
+    if (savedUser) {
+      const userData = JSON.parse(savedUser);
+      setUser(userData);
+      setUserType(userData.userType);
+      setCurrentScreen('dashboard');
+    }
+  }, []);
+
+  const handleLogin = (type: UserType, userData: any) => {
+    setUserType(type);
+    setUser(userData);
+    setCurrentScreen('dashboard');
+    setActiveTab('home');
+    localStorage.setItem('currentUser', JSON.stringify(userData));
+  };
+
+  const handleNavigation = (screen: string) => {
+    switch (screen) {
+      case 'home':
+        setCurrentScreen('dashboard');
+        break;
+      case 'attendance':
+        if (userType === 'student') {
+          setCurrentScreen('attendance');
+        } else {
+          setCurrentScreen('teacher-live');
+        }
+        break;
+      case 'reports':
+        setCurrentScreen(userType === 'student' ? 'reports' : 'teacher-reports');
+        break;
+      case 'planner':
+        toast({
+          title: "Coming Soon",
+          description: "Daily planner feature will be available in the next update.",
+        });
+        break;
+      case 'profile':
+        toast({
+          title: "Profile Settings",
+          description: "Profile management coming soon.",
+        });
+        break;
+      default:
+        setCurrentScreen(screen as Screen);
+    }
+    setActiveTab(screen);
+  };
+
+  const handleBack = () => {
+    setCurrentScreen('dashboard');
+    setActiveTab('home');
+  };
+
+  const renderScreen = () => {
+    switch (currentScreen) {
+      case 'splash':
+        return <SplashScreen onComplete={() => setCurrentScreen('login')} />;
+      
+      case 'login':
+        return <LoginScreen onLogin={handleLogin} />;
+      
+      case 'dashboard':
+        return userType === 'student' ? (
+          <StudentDashboard userData={user} onNavigate={handleNavigation} />
+        ) : (
+          <TeacherDashboard userData={user} onNavigate={handleNavigation} />
+        );
+      
+      case 'attendance':
+        return <AttendanceScreen userData={user} onBack={handleBack} />;
+      
+      case 'coding':
+        return <CodingTerminal onBack={handleBack} />;
+      
+      case 'reports':
+      case 'teacher-reports':
+        return (
+          <ReportsScreen 
+            userData={user} 
+            isTeacher={userType === 'teacher'} 
+            onBack={handleBack} 
+          />
+        );
+      
+      case 'teacher-live':
+        // Teacher live attendance view - placeholder for now
+        toast({
+          title: "Live Attendance",
+          description: "Real-time attendance monitoring coming soon.",
+        });
+        setCurrentScreen('dashboard');
+        return null;
+      
+      default:
+        return userType === 'student' ? (
+          <StudentDashboard userData={user} onNavigate={handleNavigation} />
+        ) : (
+          <TeacherDashboard userData={user} onNavigate={handleNavigation} />
+        );
+    }
+  };
+
+  const showNavigation = currentScreen === 'dashboard' && user;
+
+  return (
+    <div className="mobile-screen relative">
+      {renderScreen()}
+      {showNavigation && (
+        <Navigation 
+          activeTab={activeTab} 
+          onTabChange={handleNavigation} 
+        />
+      )}
+    </div>
+  );
+};
+
+export default Index;
