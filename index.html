@@ -1,142 +1,289 @@
 import { useState, useEffect } from 'react';
-import { SplashScreen } from '@/components/SplashScreen';
-import { LoginScreen } from '@/components/LoginScreen';
-import { StudentDashboard } from '@/components/StudentDashboard';
-import { TeacherDashboard } from '@/components/TeacherDashboard';
-import { AttendanceScreen } from '@/components/AttendanceScreen';
-import { CodingTerminal } from '@/components/CodingTerminal';
-import { ReportsScreen } from '@/components/ReportsScreen';
-import { Navigation } from '@/components/ui/navigation';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Bluetooth, 
+  Wifi, 
+  MapPin, 
+  CheckCircle, 
+  XCircle, 
+  Scan,
+  Signal,
+  Clock
+} from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
-type Screen = 'splash' | 'login' | 'dashboard' | 'attendance' | 'coding' | 'reports' | 'teacher-reports' | 'teacher-live' | 'planner' | 'profile';
-type UserType = 'student' | 'teacher';
+interface AttendanceScreenProps {
+  userData: any;
+  onBack: () => void;
+}
 
-const Index = () => {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
-  const [activeTab, setActiveTab] = useState('home');
-  const [user, setUser] = useState<any>(null);
-  const [userType, setUserType] = useState<UserType>('student');
+export function AttendanceScreen({ userData, onBack }: AttendanceScreenProps) {
+  const [isScanning, setIsScanning] = useState(false);
+  const [attendanceMarked, setAttendanceMarked] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState({
+    bluetooth: true,
+    wifi: true,
+    location: true,
+    inClassroom: true
+  });
 
-  // Check for existing session
+  const currentClass = {
+    subject: 'Computer Science',
+    room: 'C-301',
+    time: '1:30 PM - 2:30 PM',
+    teacher: 'Prof. Johnson'
+  };
+
   useEffect(() => {
-    const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
-      const userData = JSON.parse(savedUser);
-      setUser(userData);
-      setUserType(userData.userType);
-      setCurrentScreen('dashboard');
+    // Check if attendance is already marked for this session
+    const today = new Date().toDateString();
+    const markedToday = localStorage.getItem(`attendance_${userData.id}_${today}`);
+    if (markedToday) {
+      setAttendanceMarked(true);
     }
-  }, []);
+  }, [userData.id]);
 
-  const handleLogin = (type: UserType, userData: any) => {
-    setUserType(type);
-    setUser(userData);
-    setCurrentScreen('dashboard');
-    setActiveTab('home');
-    localStorage.setItem('currentUser', JSON.stringify(userData));
-  };
-
-  const handleNavigation = (screen: string) => {
-    switch (screen) {
-      case 'home':
-        setCurrentScreen('dashboard');
-        break;
-      case 'attendance':
-        if (userType === 'student') {
-          setCurrentScreen('attendance');
-        } else {
-          setCurrentScreen('teacher-live');
-        }
-        break;
-      case 'reports':
-        setCurrentScreen(userType === 'student' ? 'reports' : 'teacher-reports');
-        break;
-      case 'planner':
-        toast({
-          title: "Coming Soon",
-          description: "Daily planner feature will be available in the next update.",
-        });
-        break;
-      case 'profile':
-        toast({
-          title: "Profile Settings",
-          description: "Profile management coming soon.",
-        });
-        break;
-      default:
-        setCurrentScreen(screen as Screen);
+  const handleStartScanning = () => {
+    if (attendanceMarked) {
+      toast({
+        title: "Already Marked",
+        description: "Your attendance for this class has already been recorded.",
+        variant: "destructive"
+      });
+      return;
     }
-    setActiveTab(screen);
-  };
 
-  const handleBack = () => {
-    setCurrentScreen('dashboard');
-    setActiveTab('home');
-  };
-
-  const renderScreen = () => {
-    switch (currentScreen) {
-      case 'splash':
-        return <SplashScreen onComplete={() => setCurrentScreen('login')} />;
-      
-      case 'login':
-        return <LoginScreen onLogin={handleLogin} />;
-      
-      case 'dashboard':
-        return userType === 'student' ? (
-          <StudentDashboard userData={user} onNavigate={handleNavigation} />
-        ) : (
-          <TeacherDashboard userData={user} onNavigate={handleNavigation} />
-        );
-      
-      case 'attendance':
-        return <AttendanceScreen userData={user} onBack={handleBack} />;
-      
-      case 'coding':
-        return <CodingTerminal onBack={handleBack} />;
-      
-      case 'reports':
-      case 'teacher-reports':
-        return (
-          <ReportsScreen 
-            userData={user} 
-            isTeacher={userType === 'teacher'} 
-            onBack={handleBack} 
-          />
-        );
-      
-      case 'teacher-live':
-        // Teacher live attendance view - placeholder for now
-        toast({
-          title: "Live Attendance",
-          description: "Real-time attendance monitoring coming soon.",
-        });
-        setCurrentScreen('dashboard');
-        return null;
-      
-      default:
-        return userType === 'student' ? (
-          <StudentDashboard userData={user} onNavigate={handleNavigation} />
-        ) : (
-          <TeacherDashboard userData={user} onNavigate={handleNavigation} />
-        );
+    if (!connectionStatus.location || !connectionStatus.inClassroom) {
+      toast({
+        title: "Location Required",
+        description: "Please ensure you are within the classroom range.",
+        variant: "destructive"
+      });
+      return;
     }
-  };
 
-  const showNavigation = currentScreen === 'dashboard' && user;
+    setIsScanning(true);
+
+    // Simulate scanning process
+    setTimeout(() => {
+      const success = Math.random() > 0.1; // 90% success rate for demo
+      
+      if (success) {
+        setAttendanceMarked(true);
+        const today = new Date().toDateString();
+        localStorage.setItem(`attendance_${userData.id}_${today}`, 'present');
+        
+        toast({
+          title: "Attendance Marked! ✅",
+          description: "You have been marked present for this class.",
+        });
+      } else {
+        toast({
+          title: "Scan Failed",
+          description: "Could not detect classroom beacon. Please try again.",
+          variant: "destructive"
+        });
+      }
+      
+      setIsScanning(false);
+    }, 3000);
+  };
 
   return (
-    <div className="mobile-screen relative">
-      {renderScreen()}
-      {showNavigation && (
-        <Navigation 
-          activeTab={activeTab} 
-          onTabChange={handleNavigation} 
-        />
+    <div className="mobile-screen p-4 pb-20 space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={onBack}>
+          ←
+        </Button>
+        <div>
+          <h1 className="text-xl font-bold">Attendance</h1>
+          <p className="text-sm text-muted-foreground">Mark your presence</p>
+        </div>
+      </div>
+
+      {/* Current Class Info */}
+      <Card className="card-gradient">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Clock size={18} />
+            Current Class
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-lg font-semibold">{currentClass.subject}</h3>
+                <p className="text-sm text-muted-foreground">{currentClass.teacher}</p>
+              </div>
+              <Badge variant="outline">
+                {currentClass.time}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <MapPin size={16} className="text-primary" />
+              <span>Room {currentClass.room}</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Connection Status */}
+      <Card className="card-gradient">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Signal size={18} />
+            Connection Status
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bluetooth size={18} className="text-primary" />
+                <span>Bluetooth</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {connectionStatus.bluetooth ? (
+                  <CheckCircle size={18} className="text-success" />
+                ) : (
+                  <XCircle size={18} className="text-destructive" />
+                )}
+                <span className="text-sm">
+                  {connectionStatus.bluetooth ? 'Connected' : 'Disconnected'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Wifi size={18} className="text-primary" />
+                <span>Wi-Fi</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {connectionStatus.wifi ? (
+                  <CheckCircle size={18} className="text-success" />
+                ) : (
+                  <XCircle size={18} className="text-destructive" />
+                )}
+                <span className="text-sm">
+                  {connectionStatus.wifi ? 'Connected' : 'Disconnected'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MapPin size={18} className="text-primary" />
+                <span>Location</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {connectionStatus.location && connectionStatus.inClassroom ? (
+                  <CheckCircle size={18} className="text-success" />
+                ) : (
+                  <XCircle size={18} className="text-destructive" />
+                )}
+                <span className="text-sm">
+                  {connectionStatus.inClassroom ? 'In Classroom' : 'Outside Range'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Attendance Status */}
+      {attendanceMarked ? (
+        <Card className="card-gradient border-success">
+          <CardContent className="pt-6">
+            <div className="text-center space-y-4">
+              <div className="w-20 h-20 mx-auto bg-success/10 rounded-full flex items-center justify-center">
+                <CheckCircle size={40} className="text-success" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-success">Attendance Marked!</h3>
+                <p className="text-sm text-muted-foreground">
+                  You are marked present for this class
+                </p>
+              </div>
+              <div className="bg-success-light p-3 rounded-lg">
+                <p className="text-sm text-success font-medium">
+                  ✓ Recorded at {new Date().toLocaleTimeString()}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="card-gradient">
+          <CardContent className="pt-6">
+            <div className="text-center space-y-6">
+              {isScanning ? (
+                <div className="space-y-4">
+                  <div className="w-32 h-32 mx-auto border-4 border-primary rounded-full flex items-center justify-center scan-animation">
+                    <Scan size={48} className="text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">Scanning for Beacon...</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Please wait while we detect the classroom beacon
+                    </p>
+                  </div>
+                  <div className="flex justify-center space-x-2">
+                    {[0, 1, 2].map((i) => (
+                      <div
+                        key={i}
+                        className="w-2 h-2 bg-primary rounded-full animate-pulse"
+                        style={{
+                          animationDelay: `${i * 0.2}s`,
+                          animationDuration: '1s'
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="w-32 h-32 mx-auto border-4 border-dashed border-muted rounded-full flex items-center justify-center">
+                    <Scan size={48} className="text-muted-foreground" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">Ready to Mark Attendance</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Tap the button below to scan for the classroom beacon
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handleStartScanning}
+                    disabled={!connectionStatus.location || !connectionStatus.inClassroom || attendanceMarked}
+                    className="w-full h-12 button-primary"
+                  >
+                    {attendanceMarked ? 'Already Marked' : 'Start Attendance Scan'}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       )}
+
+      {/* Instructions */}
+      <Card className="bg-primary/5 border-primary/20">
+        <CardContent className="pt-4">
+          <div className="space-y-2">
+            <h4 className="font-semibold text-sm">How it works:</h4>
+            <ul className="text-xs text-muted-foreground space-y-1">
+              <li>• Ensure Bluetooth and GPS are enabled</li>
+              <li>• Stay within the classroom range</li>
+              <li>• Tap scan when the teacher enables attendance</li>
+              <li>• Your presence will be automatically recorded</li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
-};
-
-export default Index;
+}
